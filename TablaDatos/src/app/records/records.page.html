@@ -1,0 +1,161 @@
+<ion-header class="app-header">
+  <ion-toolbar>
+    <ion-menu-button slot="start" aria-label="Abrir menú"></ion-menu-button>
+    <ion-title>Comunidades</ion-title>
+    <ion-button slot="end" fill="clear" (click)="reports.downloadCsv(communitiesService.communities())">
+      <ion-icon slot="start" name="download-outline" aria-hidden="true"></ion-icon>
+      CSV
+    </ion-button>
+    <ion-button slot="end" fill="clear" (click)="reports.downloadPdf(communitiesService.communities())">
+      <ion-icon slot="start" name="document-text-outline" aria-hidden="true"></ion-icon>
+      PDF
+    </ion-button>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="page-content">
+  <main class="page-wrap">
+    <section class="page-heading" aria-labelledby="communities-title">
+      <div>
+        <p class="eyebrow">GESTIÓN DE COMUNIDADES</p>
+        <h1 id="communities-title">Directorio de comunidades</h1>
+        <p>Administra los datos, las cuotas y las próximas juntas desde un solo lugar.</p>
+      </div>
+      <div class="heading-actions">
+        <span class="records-count">
+          <strong>{{ communitiesService.communities().length }}</strong>
+          {{ communitiesService.communities().length === 1 ? 'comunidad' : 'comunidades' }}
+        </span>
+        @if (isAdmin()) {
+          <ion-button class="add-button" (click)="openNewCommunity()">
+            <ion-icon slot="start" name="add-outline" aria-hidden="true"></ion-icon>
+            Nueva comunidad
+          </ion-button>
+        }
+      </div>
+    </section>
+
+    @if (error()) {
+      <div class="notice notice--error" role="alert">{{ error() }}</div>
+    }
+    @if (communitiesService.realtimeError()) {
+      <div class="notice notice--warning" role="status">{{ communitiesService.realtimeError() }}</div>
+    }
+
+    <section class="directory-card" aria-labelledby="directory-title">
+      <div class="directory-heading">
+        <div>
+          <h2 id="directory-title">Todas las comunidades</h2>
+          <p>Busca por nombre o correo y filtra por estado.</p>
+        </div>
+        <span class="sync-status" [class.sync-status--offline]="!communitiesService.realtimeConnected()">
+          <span aria-hidden="true"></span>
+          {{ communitiesService.realtimeConnected() ? 'Sincronizado' : 'Sin conexión en directo' }}
+        </span>
+      </div>
+      <app-community-table
+        [communities]="communitiesService.communities()"
+        [canManage]="isAdmin()"
+        (edit)="editCommunity($event)"
+        (remove)="confirmDelete($event)"
+      />
+    </section>
+  </main>
+
+  <ion-modal
+    [isOpen]="editorOpen()"
+    (didDismiss)="closeEditor()"
+    aria-labelledby="community-editor-title"
+  >
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title id="community-editor-title">
+            {{ editingId !== null ? 'Editar comunidad' : 'Nueva comunidad' }}
+          </ion-title>
+          <ion-button slot="end" fill="clear" aria-label="Cerrar formulario" (click)="closeEditor()">
+            <ion-icon slot="icon-only" name="close-outline" aria-hidden="true"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="editor-content">
+        <form class="editor-form" #communityForm="ngForm" (ngSubmit)="save(communityForm)">
+          <ion-input
+            name="comunidad"
+            label="Nombre de la comunidad"
+            labelPlacement="stacked"
+            placeholder="Ej. Abades"
+            [(ngModel)]="draft.comunidad"
+            required
+            maxlength="120"
+          />
+          <ion-input
+            name="numero"
+            type="number"
+            label="Número de vecinos"
+            labelPlacement="stacked"
+            min="1"
+            step="1"
+            [(ngModel)]="draft.numero"
+            required
+          />
+          <ion-input
+            name="email"
+            type="email"
+            label="Correo electrónico"
+            labelPlacement="stacked"
+            placeholder="contacto@comunidad.es"
+            autocomplete="email"
+            [(ngModel)]="draft.email"
+            (ionBlur)="validateEmail()"
+            (ionInput)="emailValidationError.set('')"
+            required
+            email
+            maxlength="254"
+          />
+          @if (emailValidationError()) {
+            <p class="field-error" role="alert">{{ emailValidationError() }}</p>
+          }
+          <ion-input
+            name="costeMensual"
+            type="number"
+            label="Cuota mensual (€)"
+            labelPlacement="stacked"
+            min="0"
+            step="0.01"
+            [(ngModel)]="draft.coste_mensual"
+            required
+          />
+          <ion-input
+            name="junta"
+            type="date"
+            label="Fecha de la próxima junta"
+            labelPlacement="stacked"
+            [(ngModel)]="draft.junta"
+            required
+          />
+          <ion-toggle
+            name="cancelada"
+            labelPlacement="start"
+            justify="space-between"
+            [(ngModel)]="draft.cancelada"
+          >
+            Comunidad cancelada
+          </ion-toggle>
+          @if (error()) {
+            <div class="notice notice--error" role="alert">{{ error() }}</div>
+          }
+          <div class="form-actions">
+            <ion-button fill="outline" type="button" (click)="closeEditor()">Cancelar</ion-button>
+            <ion-button
+              type="submit"
+              [disabled]="communityForm.invalid || saving() || !!emailValidationError()"
+            >
+              {{ saving() ? 'Guardando…' : 'Guardar comunidad' }}
+            </ion-button>
+          </div>
+        </form>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+</ion-content>
